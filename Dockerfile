@@ -1,8 +1,14 @@
 FROM python:3.11-slim
 
-# system deps for Camelot/pdf tools (may be required)
-RUN apt-get update && apt-get install -y build-essential \
-    libxml2-dev libxslt-dev libjpeg-dev zlib1g-dev poppler-utils ghostscript \
+# system deps for PDF processing tools
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libxml2-dev \
+    libxslt-dev \
+    libjpeg-dev \
+    zlib1g-dev \
+    poppler-utils \
+    ghostscript \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
