@@ -5,27 +5,31 @@ from flask import (
     request,
     render_template,
     send_from_directory,
+    send_file,
     current_app,
     redirect,
     url_for,
     flash,
+    abort,
 )
 from werkzeug.utils import secure_filename
 from .extractor import process_document, list_outputs
 from .utils import validate_upload_file, get_file_info
 
-bp = Blueprint("main", __name__)
+main = Blueprint("main", __name__)
 
 ALLOWED_EXT = {"pdf", "docx"}
 
 
-@bp.route("/", methods=["GET"])
+@main.route("/", methods=["GET"])
 def index():
     outputs = list_outputs(current_app.config["OUTPUT_FOLDER"])
+    # Log the outputs for debugging
+    current_app.logger.info(f"Available output files: {outputs}")
     return render_template("index.html", outputs=outputs)
 
 
-@bp.route("/upload", methods=["POST"])
+@main.route("/upload", methods=["POST"])
 def upload():
     file = request.files.get("file")
     extract_text = bool(request.form.get("extract_text"))
@@ -74,15 +78,20 @@ def upload():
         if os.path.exists(upload_path):
             os.remove(upload_path)
 
+        # Log all generated files for debugging
+        output_files = list_outputs(current_app.config["OUTPUT_FOLDER"])
+        current_app.logger.info(f"Files after processing: {output_files}")
+
         if out_path and os.path.exists(out_path):
             flash(
                 f"✅ File processed successfully: {os.path.basename(out_path)}",
                 "success",
             )
+            current_app.logger.info(f"Primary output file: {out_path}")
         else:
             flash(
-                "⚠️ File processed but no output generated. Check your extraction options.",
-                "danger",
+                "⚠️ File processed but no primary output generated. Check generated files below.",
+                "warning",
             )
 
     except Exception as e:
@@ -95,8 +104,130 @@ def upload():
     return redirect(url_for("main.index"))
 
 
-@bp.route("/outputs/<path:filename>")
+@main.route("/download/<filename>")
 def download(filename):
-    return send_from_directory(
-        current_app.config["OUTPUT_FOLDER"], filename, as_attachment=True
-    )
+    """Download generated files"""
+    try:
+        output_dir = current_app.config.get("OUTPUT_FOLDER", "outputs")
+        file_path = os.path.join(output_dir, filename)
+
+        # Log for debugging
+        current_app.logger.info(f"Download request for: {filename}")
+        current_app.logger.info(f"Looking in directory: {output_dir}")
+        current_app.logger.info(f"Full file path: {file_path}")
+        current_app.logger.info(f"File exists: {os.path.exists(file_path)}")
+
+        if not os.path.exists(file_path):
+            current_app.logger.error(f"File not found: {file_path}")
+            flash(f"File '{filename}' not found.", "danger")
+            return redirect(url_for("main.index"))
+
+        # List all files in output directory for debugging
+        output_files = list_outputs(output_dir)
+        current_app.logger.info(f"Available output files: {output_files}")
+
+        # Use absolute path to avoid redirect issues
+        return send_file(file_path, as_attachment=True, download_name=filename)
+    except Exception as e:
+        current_app.logger.error(f"Download error: {str(e)}")
+        flash(f"Error downloading file: {str(e)}", "danger")
+        return redirect(url_for("main.index"))
+
+
+@main.route("/preview/<path:filename>")
+def preview(filename):
+    """Preview generated files in browser"""
+    try:
+        output_dir = current_app.config.get("OUTPUT_FOLDER", "outputs")
+        file_path = os.path.join(output_dir, filename)
+
+        # Log for debugging
+        current_app.logger.info(f"Preview request for: {filename}")
+        current_app.logger.info(f"Looking in directory: {output_dir}")
+        current_app.logger.info(f"Full file path: {file_path}")
+        current_app.logger.info(f"File exists: {os.path.exists(file_path)}")
+
+        if not os.path.exists(file_path):
+            current_app.logger.error(f"File not found: {file_path}")
+            flash(f"File '{filename}' not found.", "danger")
+            return redirect(url_for("main.index"))
+
+        # List all files for debugging
+        output_files = list_outputs(output_dir)
+        current_app.logger.info(f"Available output files: {output_files}")
+
+        # Handle different file types
+        if filename.endswith(".json"):
+            import json
+
+            with open(file_path, "r") as f:
+                content = json.load(f)
+            return render_template(
+                "preview.html", filename=filename, content=content, file_type="json"
+            )
+
+        elif filename.endswith(".csv"):
+            import pandas as pd
+
+            df = pd.read_csv(file_path)
+            return render_template(
+                "preview.html",
+                filename=filename,
+                content=df.to_dict("records"),
+                file_type="csv",
+                headers=df.columns.tolist(),
+            )
+
+        elif filename.endswith(".xlsx"):
+            import pandas as pd
+
+            df = pd.read_excel(file_path)
+            return render_template(
+                "preview.html",
+                filename=filename,
+                content=df.to_dict("records"),
+                file_type="excel",
+                headers=df.columns.tolist(),
+            )
+
+        elif filename.endswith(".txt"):
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            return render_template(
+                "preview.html", filename=filename, content=content, file_type="text"
+            )
+
+        else:
+            # For other file types, use send_file with absolute path
+            return send_file(file_path, as_attachment=False)
+
+    except Exception as e:
+        current_app.logger.error(f"Preview error: {str(e)}")
+        flash(f"Error previewing file: {str(e)}", "danger")
+        return redirect(url_for("main.index"))
+
+
+@main.route("/debug/files")
+def debug_files():
+    """Debug route to show available files and their details"""
+    import os
+
+    output_folder = current_app.config["OUTPUT_FOLDER"]
+    files_info = []
+
+    if os.path.exists(output_folder):
+        for filename in os.listdir(output_folder):
+            file_path = os.path.join(output_folder, filename)
+            if os.path.isfile(file_path):
+                stat_info = os.stat(file_path)
+                files_info.append(
+                    {
+                        "name": filename,
+                        "size": stat_info.st_size,
+                        "modified": stat_info.st_mtime,
+                        "path": file_path,
+                        "exists": True,
+                    }
+                )
+
+    return render_template("debug.html", files=files_info, output_folder=output_folder)
