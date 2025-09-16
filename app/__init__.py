@@ -17,7 +17,7 @@ def create_app():
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
     os.makedirs(app.config["OUTPUT_FOLDER"], exist_ok=True)
 
-    from .routes import bp
+    from .routes import main
 
-    app.register_blueprint(bp)
+    app.register_blueprint(main)
     return app
