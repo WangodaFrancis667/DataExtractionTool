@@ -3,120 +3,174 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document Extractor</title>
+  <title>Document Extractor - Professional Data Extraction Tool</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>📄 Document Extractor</h1>
-      <p>Extract text, tables, and specific fields from PDF and DOCX files</p>
+  <div class="app-container">
+    <header class="app-header">
+      <div class="header-content">
+        <h1 class="app-title">Document Extractor</h1>
+        <p class="app-subtitle">Professional Data Extraction & Analysis Platform</p>
+      </div>
     </header>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="messages">
-          {% for category, msg in messages %}
-            <div class="message {{ category }}">{{ msg }}</div>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
+    <div class="main-content">
+      <div class="content-grid">
+        <!-- Left Panel: Upload and Configuration -->
+        <div class="left-panel">
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              <div class="alert-container">
+                {% for category, msg in messages %}
+                  <div class="alert alert-{{ category }}">{{ msg }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          {% endwith %}
 
-    <main>
-      <div class="upload-section">
-        <h2>Upload Document</h2>
-        <form action="{{ url_for('main.upload') }}" method="post" enctype="multipart/form-data" class="upload-form">
-          <div class="form-group">
-            <label for="file">Choose file (PDF or DOCX):</label>
-            <input type="file" id="file" name="file" accept=".pdf,.docx" required>
-            <small>Maximum file size: 50MB</small>
-          </div>
-
-          <div class="form-group">
-            <h3>Extraction Options</h3>
-            <div class="checkbox-group">
-              <label class="checkbox-label">
-                <input type="checkbox" name="extract_text" checked>
-                <span class="checkmark"></span>
-                Extract full text content
-              </label>
-              <label class="checkbox-label">
-                <input type="checkbox" name="extract_tables" checked>
-                <span class="checkmark"></span>
-                Extract tables as structured data
-              </label>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="fields">Specific fields to extract (optional):</label>
-            <input type="text" id="fields" name="fields" placeholder="e.g., Invoice Number, Date, Total Amount, Customer Name">
-            <small>Enter comma-separated field names. The tool will search for these fields in the document.</small>
-          </div>
-
-          <div class="form-group">
-            <label for="format">Output format:</label>
-            <select id="format" name="format">
-              <option value="csv">CSV (Comma Separated Values)</option>
-              <option value="excel">Excel (XLSX)</option>
-            </select>
-          </div>
-
-          <button type="submit" class="btn-primary">🚀 Upload & Extract</button>
-        </form>
-      </div>
-
-      <div class="outputs-section">
-        <h2>📥 Generated Files</h2>
-        {% if outputs %}
-          <div class="outputs-grid">
-            {% for f in outputs %}
-              <div class="output-item">
-                <div class="file-icon">
-                  {% if f.endswith('.csv') %}📊
-                  {% elif f.endswith('.xlsx') %}📈
-                  {% elif f.endswith('.txt') %}📝
-                  {% elif f.endswith('.json') %}📋
-                  {% else %}📄
-                  {% endif %}
+          <div class="panel-section">
+            <h2 class="section-title">Document Upload & Configuration</h2>
+            <form action="{{ url_for('main.upload') }}" method="post" enctype="multipart/form-data" class="extraction-form">
+              <div class="form-row">
+                <label class="form-label" for="file">Select Document</label>
+                <div class="file-input-container">
+                  <input type="file" id="file" name="file" accept=".pdf,.docx" required class="file-input">
+                  <div class="file-input-display">
+                    <span class="file-placeholder">Choose PDF or DOCX file...</span>
+                    <button type="button" class="file-browse-btn">Browse</button>
+                  </div>
                 </div>
-                <div class="file-info">
-                  <a href="{{ url_for('main.download', filename=f) }}" class="file-link">{{ f }}</a>
-                  <small class="file-type">
-                    {% if '_fields.csv' in f %}Extracted Fields (CSV)
-                    {% elif '_fields.json' in f %}Extracted Fields (JSON)
-                    {% elif '_table' in f and f.endswith('.csv') %}Table Data (CSV)
-                    {% elif '_tables.xlsx' in f %}Tables (Excel)
-                    {% elif '_text.txt' in f %}Full Text
-                    {% else %}Document Output
-                    {% endif %}
-                  </small>
+                <small class="form-help">Maximum file size: 50MB | Supported formats: PDF, DOCX</small>
+              </div>
+
+              <div class="form-row">
+                <label class="form-label">Extraction Configuration</label>
+                <div class="option-grid">
+                  <label class="option-item">
+                    <input type="checkbox" name="extract_text" checked>
+                    <span class="option-check"></span>
+                    <div class="option-content">
+                      <span class="option-title">Text Extraction</span>
+                      <span class="option-desc">Extract all readable text content</span>
+                    </div>
+                  </label>
+                  <label class="option-item">
+                    <input type="checkbox" name="extract_tables" checked>
+                    <span class="option-check"></span>
+                    <div class="option-content">
+                      <span class="option-title">Table Extraction</span>
+                      <span class="option-desc">Extract structured tabular data</span>
+                    </div>
+                  </label>
                 </div>
               </div>
-            {% endfor %}
-          </div>
-        {% else %}
-          <div class="empty-state">
-            <p>No files processed yet. Upload a document above to get started!</p>
-          </div>
-        {% endif %}
-      </div>
-    </main>
 
-    <footer>
-      <p><small>Supports PDF and DOCX files. Files are processed locally and stored securely.</small></p>
+              <div class="form-row">
+                <label class="form-label" for="fields">Field Extraction (Optional)</label>
+                <input type="text" id="fields" name="fields" class="form-input" 
+                       placeholder="Invoice Number, Date, Total Amount, Customer Name">
+                <small class="form-help">Specify comma-separated field names for targeted extraction</small>
+              </div>
+
+              <div class="form-row">
+                <label class="form-label" for="format">Output Format</label>
+                <select id="format" name="format" class="form-select">
+                  <option value="csv">CSV (Comma Separated Values)</option>
+                  <option value="excel">Excel Workbook (XLSX)</option>
+                </select>
+              </div>
+
+              <button type="submit" class="process-btn">
+                <span class="btn-text">Process Document</span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Right Panel: Results and File Management -->
+        <div class="right-panel">
+          <div class="panel-section">
+            <h2 class="section-title">Generated Files</h2>
+            {% if outputs %}
+              <div class="file-list">
+                {% for f in outputs %}
+                  <div class="file-item">
+                    <div class="file-details">
+                      <div class="file-name">
+                        <a href="{{ url_for('main.preview', filename=f) }}" class="download-link">{{ f }}</a>
+                      </div>
+                      <div class="file-meta">
+                        <span class="file-type-badge">
+                          {% if '_fields.csv' in f %}Field Data
+                          {% elif '_fields.json' in f %}Field JSON
+                          {% elif '_table' in f and f.endswith('.csv') %}Table CSV
+                          {% elif '_tables.xlsx' in f %}Table Excel
+                          {% elif '_text.txt' in f %}Text Content
+                          {% else %}Document Output
+                          {% endif %}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="file-actions">
+                      <a href="{{ url_for('main.preview', filename=f) }}" class="preview-btn-main">Preview</a>
+                      <a href="{{ url_for('main.download', filename=f) }}" class="download-btn">Download</a>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="empty-files-state">
+                <div class="empty-icon"></div>
+                <p class="empty-message">No processed files yet</p>
+                <p class="empty-hint">Upload and process a document to see results here</p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="app-footer">
+      <div class="footer-content">
+        <p class="footer-text">Secure local processing • Supports PDF & DOCX • Enterprise-grade extraction</p>
+      </div>
     </footer>
   </div>
 
   <script>
-    // Add some basic interactivity
-    document.getElementById('file').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (file) {
-        const fileSize = (file.size / 1024 / 1024).toFixed(2);
-        console.log(`Selected file: ${file.name} (${fileSize} MB)`);
-      }
+    // File input enhancement
+    document.addEventListener('DOMContentLoaded', function() {
+      const fileInput = document.getElementById('file');
+      const filePlaceholder = document.querySelector('.file-placeholder');
+      const browseBtnCustom = document.querySelector('.file-browse-btn');
+      
+      // Handle file input change
+      fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          const fileSize = (file.size / 1024 / 1024).toFixed(2);
+          filePlaceholder.textContent = `${file.name} (${fileSize} MB)`;
+          filePlaceholder.style.color = '#2d5016';
+        } else {
+          filePlaceholder.textContent = 'Choose PDF or DOCX file...';
+          filePlaceholder.style.color = '#6b7280';
+        }
+      });
+      
+      // Custom browse button
+      browseBtnCustom.addEventListener('click', function() {
+        fileInput.click();
+      });
+      
+      // Form submission feedback
+      const form = document.querySelector('.extraction-form');
+      const processBtn = document.querySelector('.process-btn');
+      
+      form.addEventListener('submit', function() {
+        processBtn.innerHTML = '<span class="btn-text">Processing...</span>';
+        processBtn.disabled = true;
+      });
     });
   </script>
 </body>
