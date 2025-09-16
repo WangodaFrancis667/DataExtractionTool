@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  extractor:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+    environment:
+      - FLASK_ENV=production
